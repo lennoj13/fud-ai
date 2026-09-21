@@ -133,16 +133,21 @@ open class MainActivity : ComponentActivity() {
                 .collect { QuickActionShortcutManager.update(this@MainActivity, it) }
         }
 
-        val startOnboarding = runBlocking { !container.prefs.hasCompletedOnboarding.first() }
+        val startOnboarding = runBlocking {
+            val completed = container.prefs.hasCompletedOnboarding.first()
+            if (!completed) {
+                val profile = container.profileRepository.current()
+                if (profile == null) {
+                    container.profileRepository.save(UserProfile.Default)
+                }
+                container.prefs.setOnboardingCompleted(true)
+            }
+            false
+        }
         val initialAppearance = runBlocking { container.prefs.appearanceMode.first() }
         val initialThemeColorKey = runBlocking { container.prefs.appThemeColor.first() }
 
-        // Hold the splash on screen until the saved profile has loaded from
-        // DataStore so Home doesn't briefly render its 2000/150/220/70 fallback
-        // goal numbers before snapping to the user's real targets. Onboarding
-        // doesn't show those numbers, so we let the splash dismiss immediately
-        // in that case.
-        var contentReady = startOnboarding
+        var contentReady = true
         splashScreen.setKeepOnScreenCondition { !contentReady }
         if (!startOnboarding) {
             lifecycleScope.launch {
