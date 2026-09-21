@@ -108,6 +108,7 @@ data class SettingsUiState(
     val mcpServerEnabled: Boolean = false,
     val mcpServerPort: Int = 8080,
     val mcpAuthToken: String = "",
+    val mcpPublicTunnelEnabled: Boolean = true,
     /** A goal-relevant input changed since the last Recalculate. Drives a soft nudge on the
      *  Recalculate row; the button stays tappable at all times — this never disables it. */
     val goalsNeedRecalc: Boolean = false
@@ -191,6 +192,12 @@ class SettingsViewModel(val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             container.prefs.mcpAuthToken.collect { token ->
                 _ui.value = _ui.value.copy(mcpAuthToken = token)
+            }
+        }
+
+        viewModelScope.launch {
+            container.prefs.mcpPublicTunnelEnabled.collect { enabled ->
+                _ui.value = _ui.value.copy(mcpPublicTunnelEnabled = enabled)
             }
         }
 
@@ -1565,6 +1572,12 @@ class SettingsViewModel(val container: AppContainer) : ViewModel() {
     fun setMcpAuthToken(token: String) {
         viewModelScope.launch {
             container.prefs.setMcpAuthToken(token)
+        }
+    }
+
+    fun setMcpPublicTunnelEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            container.prefs.setMcpPublicTunnelEnabled(enabled)
         }
     }
 

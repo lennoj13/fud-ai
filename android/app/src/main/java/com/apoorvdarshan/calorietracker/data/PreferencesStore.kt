@@ -1362,6 +1362,11 @@ class PreferencesStore(
         ds.edit { it[Keys.MCP_AUTH_TOKEN] = token.trim() }
     }
 
+    val mcpPublicTunnelEnabled: Flow<Boolean> = ds.data.map { it[Keys.MCP_PUBLIC_TUNNEL_ENABLED] ?: true }
+    suspend fun setMcpPublicTunnelEnabled(enabled: Boolean) {
+        ds.edit { it[Keys.MCP_PUBLIC_TUNNEL_ENABLED] = enabled }
+    }
+
     // -- Wipe everything --------------------------------------------------
     suspend fun clearAll() {
         ds.edit { it.clear() }
@@ -1371,6 +1376,7 @@ class PreferencesStore(
         val MCP_SERVER_ENABLED = booleanPreferencesKey("mcpServerEnabled")
         val MCP_SERVER_PORT = intPreferencesKey("mcpServerPort")
         val MCP_AUTH_TOKEN = stringPreferencesKey("mcpAuthToken")
+        val MCP_PUBLIC_TUNNEL_ENABLED = booleanPreferencesKey("mcpPublicTunnelEnabled")
         val USER_PROFILE = stringPreferencesKey("userProfile")
         val LAST_RECALC_GOAL_SIGNATURE = stringPreferencesKey("lastRecalcGoalSignature")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("hasCompletedOnboarding")

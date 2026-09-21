@@ -395,6 +395,7 @@ dependencies {
     implementation(libs.vico.compose.m3)
     implementation(libs.litert.lm.android)
     implementation(libs.whisper.android)
+    implementation("com.github.mwiede:jsch:0.2.20")
 
     testImplementation(libs.junit)
     testImplementation("org.json:json:20240303")

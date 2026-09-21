@@ -21,20 +21,24 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CloudDone
+import androidx.compose.material.icons.outlined.CloudQueue
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Hub
-import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Lan
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Usb
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,11 +53,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.apoorvdarshan.calorietracker.services.mcp.McpForegroundService
+import com.apoorvdarshan.calorietracker.services.mcp.TunnelStatus
 import com.apoorvdarshan.calorietracker.ui.components.FudGlassDialog
 import com.apoorvdarshan.calorietracker.ui.components.FudGlassDialogActions
 import com.apoorvdarshan.calorietracker.ui.components.FudGlassSurface
 import com.apoorvdarshan.calorietracker.ui.components.FudGlassTextField
-import com.apoorvdarshan.calorietracker.ui.theme.AppColors
 
 @Composable
 fun McpServerSettingsCard(
@@ -64,11 +68,13 @@ fun McpServerSettingsCard(
 ) {
     val context = LocalContext.current
     val localIp = remember { McpForegroundService.getLocalIpAddress() }
+    val publicTunnelUrl by McpForegroundService.publicTunnelUrl.collectAsState()
+    val tunnelStatus by McpForegroundService.tunnelStatus.collectAsState()
     var showConfigDialog by remember { mutableStateOf(false) }
 
     Column {
         Text(
-            text = "INTEGRACIÓN CON AGENTES IA (MCP)",
+            text = "INTEGRACIÓN CON CHATGPT / AGENTES IA (MCP)",
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f),
@@ -115,7 +121,9 @@ fun McpServerSettingsCard(
                         }
 
                         Text(
-                            text = if (ui.mcpServerEnabled) "En línea en puerto ${ui.mcpServerPort}" else "Permite a agentes leer y registrar comidas",
+                            text = if (ui.mcpServerEnabled) {
+                                if (publicTunnelUrl != null) "En línea en Internet con Túnel Público" else "Iniciando conexión..."
+                            } else "Permite a ChatGPT leer y registrar tus comidas",
                             style = MaterialTheme.typography.bodySmall,
                             color = if (ui.mcpServerEnabled) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
@@ -140,13 +148,78 @@ fun McpServerSettingsCard(
                     ) {
                         HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
+                        // PROMINENT PUBLIC TUNNEL SECTION FOR CHATGPT
+                        if (publicTunnelUrl != null) {
+                            val fullMcpUrl = "$publicTunnelUrl/mcp"
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(Color(0xFF065F46).copy(alpha = 0.25f))
+                                    .border(1.5.dp, Color(0xFF10B981).copy(alpha = 0.6f), RoundedCornerShape(14.dp))
+                                    .clickable {
+                                        copyToClipboard(context, fullMcpUrl, "¡URL para ChatGPT copiada al portapapeles!")
+                                    }
+                                    .padding(14.dp)
+                            ) {
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Outlined.CloudDone, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(20.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            "URL PÚBLICA PARA CHATGPT (INTERNET)",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF10B981)
+                                        )
+                                        Spacer(Modifier.weight(1f))
+                                        Icon(Icons.Outlined.ContentCopy, contentDescription = "Copiar", tint = Color(0xFF10B981), modifier = Modifier.size(16.dp))
+                                    }
+
+                                    Spacer(Modifier.height(6.dp))
+
+                                    Text(
+                                        text = fullMcpUrl,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.sp,
+                                        color = Color.White
+                                    )
+
+                                    Spacer(Modifier.height(6.dp))
+
+                                    Text(
+                                        text = "Toca para copiar. Pega esta dirección en ChatGPT (Developer Mode o Custom GPT Actions) y pregúntale por tus comidas desde cualquier lugar con 4G, 5G o Wi-Fi.",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                                        lineHeight = 15.sp
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(10.dp))
+                        } else if (tunnelStatus == TunnelStatus.CONNECTING) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color(0xFF10B981))
+                                Spacer(Modifier.width(10.dp))
+                                Text("Generando enlace público seguro para ChatGPT...", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                            }
+                            Spacer(Modifier.height(10.dp))
+                        }
+
                         // Local Wi-Fi IP Pill
                         DetailInfoPill(
                             icon = Icons.Outlined.Lan,
-                            label = "URL Local (Wi-Fi):",
+                            label = "URL Local Wi-Fi (para misma red):",
                             value = "http://$localIp:${ui.mcpServerPort}",
                             onCopy = {
-                                copyToClipboard(context, "http://$localIp:${ui.mcpServerPort}", "URL copiada")
+                                copyToClipboard(context, "http://$localIp:${ui.mcpServerPort}", "URL local copiada")
                             }
                         )
 
@@ -155,7 +228,7 @@ fun McpServerSettingsCard(
                         // USB Forward Pill
                         DetailInfoPill(
                             icon = Icons.Outlined.Usb,
-                            label = "Comando USB (PC):",
+                            label = "Conexión USB a PC (Opcional):",
                             value = "adb forward tcp:${ui.mcpServerPort} tcp:${ui.mcpServerPort}",
                             onCopy = {
                                 copyToClipboard(context, "adb forward tcp:${ui.mcpServerPort} tcp:${ui.mcpServerPort}", "Comando ADB copiado")
@@ -175,12 +248,13 @@ fun McpServerSettingsCard(
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
                                     .clickable {
+                                        val activeUrl = publicTunnelUrl ?: "http://localhost:${ui.mcpServerPort}"
                                         val mcpConfig = """
                                         {
                                           "mcpServers": {
                                             "fudai": {
                                               "command": "node",
-                                              "args": ["scripts/mcp-bridge/fudai-mcp-bridge.mjs", "http://localhost:${ui.mcpServerPort}"]
+                                              "args": ["scripts/mcp-bridge/fudai-mcp-bridge.mjs", "$activeUrl"]
                                             }
                                           }
                                         }
@@ -220,7 +294,7 @@ fun McpServerSettingsCard(
         }
 
         Text(
-            text = "Permite a agentes como ChatGPT y Claude consultar tu balance calórico, buscar alimentos y registrar comidas automáticamente mediante el protocolo estándar MCP o REST.",
+            text = "Permite a ChatGPT o Claude consultar tu consumo de calorías, buscar platos anteriores y registrar nuevas comidas con solo hablarle.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
