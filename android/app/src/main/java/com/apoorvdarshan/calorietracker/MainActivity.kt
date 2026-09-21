@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.apoorvdarshan.calorietracker.models.FoodEntry
 import com.apoorvdarshan.calorietracker.models.QuickActionRequest
+import com.apoorvdarshan.calorietracker.models.UserProfile
 import com.apoorvdarshan.calorietracker.services.MealShare
 import com.apoorvdarshan.calorietracker.services.QuickActionShortcutManager
 import com.apoorvdarshan.calorietracker.services.ReviewPrompter
