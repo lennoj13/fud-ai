@@ -397,6 +397,7 @@ dependencies {
     implementation(libs.whisper.android)
 
     testImplementation(libs.junit)
+    testImplementation("org.json:json:20240303")
     testImplementation("com.squareup.okhttp3:mockwebserver:${libs.versions.okhttp.get()}")
     testImplementation("com.squareup.okhttp3:okhttp-tls:${libs.versions.okhttp.get()}")
     androidTestImplementation(platform(libs.androidx.compose.bom))

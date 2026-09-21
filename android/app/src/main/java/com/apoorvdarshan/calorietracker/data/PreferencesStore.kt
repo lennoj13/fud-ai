@@ -1346,12 +1346,31 @@ class PreferencesStore(
         ds.edit { it.remove(Keys.WIDGET_SNAPSHOT) }
     }
 
+    // -- MCP Server settings ---------------------------------------------
+    val mcpServerEnabled: Flow<Boolean> = ds.data.map { it[Keys.MCP_SERVER_ENABLED] ?: false }
+    suspend fun setMcpServerEnabled(enabled: Boolean) {
+        ds.edit { it[Keys.MCP_SERVER_ENABLED] = enabled }
+    }
+
+    val mcpServerPort: Flow<Int> = ds.data.map { it[Keys.MCP_SERVER_PORT] ?: 8080 }
+    suspend fun setMcpServerPort(port: Int) {
+        ds.edit { it[Keys.MCP_SERVER_PORT] = port.coerceIn(1024, 65535) }
+    }
+
+    val mcpAuthToken: Flow<String> = ds.data.map { it[Keys.MCP_AUTH_TOKEN] ?: "" }
+    suspend fun setMcpAuthToken(token: String) {
+        ds.edit { it[Keys.MCP_AUTH_TOKEN] = token.trim() }
+    }
+
     // -- Wipe everything --------------------------------------------------
     suspend fun clearAll() {
         ds.edit { it.clear() }
     }
 
     private object Keys {
+        val MCP_SERVER_ENABLED = booleanPreferencesKey("mcpServerEnabled")
+        val MCP_SERVER_PORT = intPreferencesKey("mcpServerPort")
+        val MCP_AUTH_TOKEN = stringPreferencesKey("mcpAuthToken")
         val USER_PROFILE = stringPreferencesKey("userProfile")
         val LAST_RECALC_GOAL_SIGNATURE = stringPreferencesKey("lastRecalcGoalSignature")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("hasCompletedOnboarding")

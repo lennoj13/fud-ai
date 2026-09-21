@@ -105,6 +105,9 @@ data class SettingsUiState(
     val quickActions: List<QuickAction> = QuickAction.Defaults,
     val addMenuConfig: AddMenuConfig = AddMenuConfig.Default,
     val localModelStates: Map<LocalModelId, LocalModelState> = emptyMap(),
+    val mcpServerEnabled: Boolean = false,
+    val mcpServerPort: Int = 8080,
+    val mcpAuthToken: String = "",
     /** A goal-relevant input changed since the last Recalculate. Drives a soft nudge on the
      *  Recalculate row; the button stays tappable at all times — this never disables it. */
     val goalsNeedRecalc: Boolean = false
@@ -170,6 +173,24 @@ class SettingsViewModel(val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             container.prefs.addMenuConfig.collect { config ->
                 _ui.value = _ui.value.copy(addMenuConfig = config)
+            }
+        }
+
+        viewModelScope.launch {
+            container.prefs.mcpServerEnabled.collect { enabled ->
+                _ui.value = _ui.value.copy(mcpServerEnabled = enabled)
+            }
+        }
+
+        viewModelScope.launch {
+            container.prefs.mcpServerPort.collect { port ->
+                _ui.value = _ui.value.copy(mcpServerPort = port)
+            }
+        }
+
+        viewModelScope.launch {
+            container.prefs.mcpAuthToken.collect { token ->
+                _ui.value = _ui.value.copy(mcpAuthToken = token)
             }
         }
 
@@ -1522,6 +1543,29 @@ class SettingsViewModel(val container: AppContainer) : ViewModel() {
         val alternate = fallback.textModels.firstOrNull { it != primaryModel } ?: return
         container.prefs.setSelectedTextFallbackModel(alternate)
         _ui.value = _ui.value.copy(textFallbackModel = alternate)
+    }
+
+    fun setMcpServerEnabled(context: android.content.Context, enabled: Boolean) {
+        if (enabled) {
+            com.apoorvdarshan.calorietracker.services.mcp.McpForegroundService.start(context)
+        } else {
+            com.apoorvdarshan.calorietracker.services.mcp.McpForegroundService.stop(context)
+        }
+        viewModelScope.launch {
+            container.prefs.setMcpServerEnabled(enabled)
+        }
+    }
+
+    fun setMcpServerPort(port: Int) {
+        viewModelScope.launch {
+            container.prefs.setMcpServerPort(port)
+        }
+    }
+
+    fun setMcpAuthToken(token: String) {
+        viewModelScope.launch {
+            container.prefs.setMcpAuthToken(token)
+        }
     }
 
     private fun maskKey(key: String?): String =

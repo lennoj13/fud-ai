@@ -103,7 +103,13 @@ class NotificationService(private val context: Context) {
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply { description = context.getString(R.string.notif_channel_announcements_desc) }
 
-        mgr.createNotificationChannels(listOf(streak, daily, goal, weight, bodyFat, appUpdate, water, announcements))
+        val mcp = NotificationChannel(
+            CHANNEL_MCP,
+            "MCP AI Server",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply { description = "Servidor MCP para agentes externos como ChatGPT" }
+
+        mgr.createNotificationChannels(listOf(streak, daily, goal, weight, bodyFat, appUpdate, water, announcements, mcp))
     }
 
     fun canPostNotifications(): Boolean {
@@ -384,6 +390,7 @@ class NotificationService(private val context: Context) {
         const val CHANNEL_WATER = "water_reminder"
         const val CHANNEL_FASTING = "fasting_goal"
         const val CHANNEL_ANNOUNCEMENTS = "announcements"
+        const val CHANNEL_MCP = "fudai_mcp_server"
         const val EXTRA_CHANNEL = "channel"
         const val EXTRA_TITLE = "title"
         const val EXTRA_TEXT = "text"
@@ -392,6 +399,7 @@ class NotificationService(private val context: Context) {
         private const val GOAL_NOTIFICATION_ID = 4242
         private const val APP_UPDATE_NOTIFICATION_ID = 5555
         private const val PRODUCT_HUNT_NOTIFICATION_ID = 6666
+        const val MCP_NOTIFICATION_ID = 7777
         private const val REQUEST_STREAK = 1001
         private const val REQUEST_DAILY = 1002
         private const val REQUEST_WEIGHT = 1003

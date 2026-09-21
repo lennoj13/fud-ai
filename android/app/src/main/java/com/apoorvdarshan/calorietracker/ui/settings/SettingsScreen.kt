@@ -1338,6 +1338,13 @@ fun SettingsScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
                 )
             }
+                Spacer(Modifier.height(16.dp))
+                McpServerSettingsCard(
+                    ui = ui,
+                    onToggle = { enabled -> vm.setMcpServerEnabled(activityContext, enabled) },
+                    onPortChange = { port -> vm.setMcpServerPort(port) },
+                    onTokenChange = { token -> vm.setMcpAuthToken(token) }
+                )
             }
 
             // Section 6 — Health & Data (matches iOS Section "Health & Data")
