@@ -90,13 +90,23 @@ class McpTunnelManager(private val localPort: Int) {
 
     private suspend fun connectAndMaintainTunnel() = withContext(Dispatchers.IO) {
         val jsch = JSch()
-        val randomSubdomain = "fudai-" + UUID.randomUUID().toString().take(6)
-        
-        // Try Serveo first
-        val session = jsch.getSession(randomSubdomain, "serveo.net", 22)
-        session.setConfig("StrictHostKeyChecking", "no")
-        session.setServerAliveInterval(30000) // 30s keep-alive
-        session.connect(15000)
+
+        // Use localhost.run (active, working global DNS with TLS termination https://xxxx.lhr.life)
+        val session = try {
+            val s = jsch.getSession("nokey", "localhost.run", 22)
+            s.setConfig("StrictHostKeyChecking", "no")
+            s.setServerAliveInterval(30000)
+            s.connect(15000)
+            s
+        } catch (e: Exception) {
+            Log.w(TAG, "localhost.run failed, falling back to serveo: ${e.message}")
+            val randomSubdomain = "fudai-" + UUID.randomUUID().toString().take(6)
+            val s = jsch.getSession(randomSubdomain, "serveo.net", 22)
+            s.setConfig("StrictHostKeyChecking", "no")
+            s.setServerAliveInterval(30000)
+            s.connect(15000)
+            s
+        }
         activeSession = session
 
         // Request remote port 80 forwarding to localPort
@@ -109,7 +119,7 @@ class McpTunnelManager(private val localPort: Int) {
         channel.connect(5000)
 
         val reader = BufferedReader(InputStreamReader(input))
-        val urlRegex = Regex("https://[a-zA-Z0-9.-]+\\.serveo(usercontent)?\\.com")
+        val urlRegex = Regex("https://[a-zA-Z0-9.-]+\\.(lhr\\.life|localhost\\.run|serveo(usercontent)?\\.com)")
 
         var line: String?
         val startTime = System.currentTimeMillis()

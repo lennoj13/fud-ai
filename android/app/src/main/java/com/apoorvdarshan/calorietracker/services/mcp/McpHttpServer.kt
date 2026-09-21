@@ -167,7 +167,7 @@ class McpHttpServer(
                     // 3. OpenAPI 3.0 Specification for ChatGPT Actions
                     method == "GET" && (path == "/openapi.json" || path == "/openapi.yaml") -> {
                         val hostHeader = headers["host"] ?: "localhost:$port"
-                        val scheme = if (headers["x-forwarded-proto"] == "https" || hostHeader.contains("serveo.net") || hostHeader.contains("serveousercontent.com")) "https" else "http"
+                        val scheme = if (headers["x-forwarded-proto"] == "https" || hostHeader.contains("lhr.life") || hostHeader.contains("localhost.run") || hostHeader.contains("serveo")) "https" else "http"
                         val baseUrl = "$scheme://$hostHeader"
                         val openApiJson = McpOpenApiSpec.generateJson(baseUrl)
                         sendJsonResponse(outputStream, 200, openApiJson)
@@ -176,7 +176,7 @@ class McpHttpServer(
                     // 4. Status and greeting
                     method == "GET" && (path == "/" || path == "/status" || path == "/api/status") -> {
                         val hostHeader = headers["host"] ?: "localhost:$port"
-                        val scheme = if (headers["x-forwarded-proto"] == "https" || hostHeader.contains("serveo.net") || hostHeader.contains("serveousercontent.com")) "https" else "http"
+                        val scheme = if (headers["x-forwarded-proto"] == "https" || hostHeader.contains("lhr.life") || hostHeader.contains("localhost.run") || hostHeader.contains("serveo")) "https" else "http"
                         val baseUrl = "$scheme://$hostHeader"
                         sendJsonResponse(outputStream, 200, JSONObject().apply {
                             put("app", "Fud AI")
