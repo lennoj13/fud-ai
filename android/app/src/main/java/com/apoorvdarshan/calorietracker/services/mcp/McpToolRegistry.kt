@@ -18,7 +18,7 @@ object McpToolRegistry {
                 put("name", "get_today_summary")
                 put(
                     "description",
-                    "Obtiene el resumen de calorías y macronutrientes (proteínas, carbohidratos, grasas), meta diaria, calorías restantes, agua y estado de ayuno para el día actual o una fecha específica."
+                    "Obtiene el resumen completo de calorías y macronutrientes (consumidos, meta, restantes), agua, estado de ayuno y entrenamientos realizados para el día de hoy o una fecha específica."
                 )
                 put("inputSchema", JSONObject().apply {
                     put("type", "object")
@@ -38,7 +38,7 @@ object McpToolRegistry {
                 put("name", "get_food_entries")
                 put(
                     "description",
-                    "Busca y lista comidas y alimentos registrados en el diario nutricional con filtros por rango de fechas, tipo de comida o texto de búsqueda."
+                    "Busca y lista comidas y alimentos registrados en el diario nutricional con detalles completos (ingredientes, calorías, macros, micronutrientes, notas) filtrando por rango de fechas, momento del día o texto."
                 )
                 put("inputSchema", JSONObject().apply {
                     put("type", "object")
@@ -69,13 +69,13 @@ object McpToolRegistry {
             }
         )
 
-        // 3. log_food_entry (ESCRITURA)
+        // 3. log_food_entry (ESCRITURA CON FOTO E INGREDIENTES)
         tools.put(
             JSONObject().apply {
                 put("name", "log_food_entry")
                 put(
                     "description",
-                    "Registra un nuevo alimento o comida en el diario de Fud AI con sus calorías y macronutrientes. Aparece de inmediato en la pantalla del celular."
+                    "Registra un nuevo alimento o comida completa en el diario de Fud AI con calorías, macros, lista de ingredientes individuales, micronutrientes y opcionalmente foto en base64. Aparece al instante en la pantalla del celular."
                 )
                 put("inputSchema", JSONObject().apply {
                     put("type", "object")
@@ -83,7 +83,7 @@ object McpToolRegistry {
                     put("properties", JSONObject().apply {
                         put("name", JSONObject().apply {
                             put("type", "string")
-                            put("description", "Nombre del alimento o plato (ej: 'Pechuga de pollo a la plancha con arroz').")
+                            put("description", "Nombre del plato o alimento (ej: 'Pechuga de pollo a la plancha con arroz blanco y ensalada').")
                         })
                         put("calories", JSONObject().apply {
                             put("type", "integer")
@@ -91,11 +91,11 @@ object McpToolRegistry {
                         })
                         put("protein", JSONObject().apply {
                             put("type", "number")
-                            put("description", "Proteínas en gramos (g).")
+                            put("description", "Proteínas totales en gramos (g).")
                         })
                         put("carbs", JSONObject().apply {
                             put("type", "number")
-                            put("description", "Carbohidratos en gramos (g).")
+                            put("description", "Carbohidratos totales en gramos (g).")
                         })
                         put("fat", JSONObject().apply {
                             put("type", "number")
@@ -104,26 +104,101 @@ object McpToolRegistry {
                         put("meal_type", JSONObject().apply {
                             put("type", "string")
                             put("enum", JSONArray(listOf("breakfast", "lunch", "dinner", "snack", "other")))
-                            put("description", "Momento del día. Si se omite, se asigna automáticamente según la hora actual.")
+                            put("description", "Momento del día (desayuno, almuerzo, cena, merienda, otro). Si se omite, se deduce según la hora.")
                         })
                         put("serving_size_grams", JSONObject().apply {
                             put("type", "number")
-                            put("description", "Peso estimado de la porción en gramos (opcional).")
+                            put("description", "Peso total estimado de la porción en gramos.")
                         })
                         put("notes", JSONObject().apply {
                             put("type", "string")
-                            put("description", "Notas o detalles adicionales del alimento.")
+                            put("description", "Notas, observaciones o desglose del plato.")
                         })
                         put("date_time", JSONObject().apply {
                             put("type", "string")
                             put("description", "Fecha y hora en formato ISO-8601 (ej. '2026-09-20T14:30:00Z'). Si se omite, usa la hora actual.")
+                        })
+                        put("image_base64", JSONObject().apply {
+                            put("type", "string")
+                            put("description", "Imagen de la comida codificada en Base64 (JPEG o PNG). Se guarda y se muestra como miniatura en el diario del teléfono.")
+                        })
+                        put("ingredients", JSONObject().apply {
+                            put("type", "array")
+                            put("description", "Lista de ingredientes o alimentos individuales que componen el plato.")
+                            put("items", JSONObject().apply {
+                                put("type", "object")
+                                put("required", JSONArray(listOf("name", "calories", "protein", "carbs", "fat")))
+                                put("properties", JSONObject().apply {
+                                    put("name", JSONObject().put("type", "string").put("description", "Nombre del ingrediente (ej: 'Arroz blanco cocido')."))
+                                    put("grams", JSONObject().put("type", "number").put("description", "Peso en gramos."))
+                                    put("calories", JSONObject().put("type", "integer").put("description", "Calorías del ingrediente."))
+                                    put("protein", JSONObject().put("type", "number").put("description", "Proteínas (g)."))
+                                    put("carbs", JSONObject().put("type", "number").put("description", "Carbohidratos (g)."))
+                                    put("fat", JSONObject().put("type", "number").put("description", "Grasas (g)."))
+                                })
+                            })
+                        })
+                        put("fiber", JSONObject().put("type", "number").put("description", "Fibra en gramos (opcional)."))
+                        put("sugar", JSONObject().put("type", "number").put("description", "Azúcares en gramos (opcional)."))
+                        put("sodium", JSONObject().put("type", "number").put("description", "Sodio en miligramos (opcional)."))
+                        put("potassium", JSONObject().put("type", "number").put("description", "Potasio en miligramos (opcional)."))
+                        put("saturated_fat", JSONObject().put("type", "number").put("description", "Grasa saturada en gramos (opcional)."))
+                        put("cholesterol", JSONObject().put("type", "number").put("description", "Colesterol en miligramos (opcional)."))
+                    })
+                })
+            }
+        )
+
+        // 4. update_food_entry (ACTUALIZAR COMIDA EXISTENTE)
+        tools.put(
+            JSONObject().apply {
+                put("name", "update_food_entry")
+                put(
+                    "description",
+                    "Modifica o corrige un alimento o comida previamente registrada (por ejemplo para corregir calorías, porción, macros o nombre tras un ajuste del usuario)."
+                )
+                put("inputSchema", JSONObject().apply {
+                    put("type", "object")
+                    put("required", JSONArray(listOf("id")))
+                    put("properties", JSONObject().apply {
+                        put("id", JSONObject().apply {
+                            put("type", "string")
+                            put("description", "UUID de la comida a actualizar.")
+                        })
+                        put("name", JSONObject().apply {
+                            put("type", "string")
+                            put("description", "Nuevo nombre del alimento (opcional).")
+                        })
+                        put("calories", JSONObject().apply {
+                            put("type", "integer")
+                            put("description", "Nuevas calorías estimadas (opcional).")
+                        })
+                        put("protein", JSONObject().apply {
+                            put("type", "number")
+                            put("description", "Nuevas proteínas en gramos (opcional).")
+                        })
+                        put("carbs", JSONObject().apply {
+                            put("type", "number")
+                            put("description", "Nuevos carbohidratos en gramos (opcional).")
+                        })
+                        put("fat", JSONObject().apply {
+                            put("type", "number")
+                            put("description", "Nuevas grasas en gramos (opcional).")
+                        })
+                        put("serving_size_grams", JSONObject().apply {
+                            put("type", "number")
+                            put("description", "Nuevo peso de la porción en gramos (opcional).")
+                        })
+                        put("notes", JSONObject().apply {
+                            put("type", "string")
+                            put("description", "Nuevas notas o comentarios (opcional).")
                         })
                     })
                 })
             }
         )
 
-        // 4. delete_food_entry (ESCRITURA)
+        // 5. delete_food_entry (ESCRITURA)
         tools.put(
             JSONObject().apply {
                 put("name", "delete_food_entry")
@@ -144,13 +219,73 @@ object McpToolRegistry {
             }
         )
 
-        // 5. get_weight_history
+        // 6. get_user_profile
+        tools.put(
+            JSONObject().apply {
+                put("name", "get_user_profile")
+                put(
+                    "description",
+                    "Obtiene el perfil completo del usuario: edad, género, peso actual, peso meta, altura, nivel de actividad, objetivo calórico diario, metas de macronutrientes, meta de agua, BMR y TDEE."
+                )
+                put("inputSchema", JSONObject().apply {
+                    put("type", "object")
+                    put("properties", JSONObject())
+                })
+            }
+        )
+
+        // 7. update_user_goals (GESTIÓN DE METAS)
+        tools.put(
+            JSONObject().apply {
+                put("name", "update_user_goals")
+                put(
+                    "description",
+                    "Actualiza las metas nutricionales y físicas del usuario: objetivo de calorías diarias, distribución de macronutrientes (proteína, carbohidratos, grasa en gramos), peso objetivo, meta de agua y nivel de actividad."
+                )
+                put("inputSchema", JSONObject().apply {
+                    put("type", "object")
+                    put("properties", JSONObject().apply {
+                        put("daily_calorie_target", JSONObject().apply {
+                            put("type", "integer")
+                            put("description", "Nueva meta de calorías diarias (kcal) (ej: 2100).")
+                        })
+                        put("protein_target_g", JSONObject().apply {
+                            put("type", "integer")
+                            put("description", "Meta de proteínas diarias en gramos (ej: 160).")
+                        })
+                        put("carbs_target_g", JSONObject().apply {
+                            put("type", "integer")
+                            put("description", "Meta de carbohidratos diarios en gramos (ej: 220).")
+                        })
+                        put("fat_target_g", JSONObject().apply {
+                            put("type", "integer")
+                            put("description", "Meta de grasas diarias en gramos (ej: 65).")
+                        })
+                        put("goal_weight_kg", JSONObject().apply {
+                            put("type", "number")
+                            put("description", "Peso meta en kilogramos (ej: 68.5).")
+                        })
+                        put("goal", JSONObject().apply {
+                            put("type", "string")
+                            put("enum", JSONArray(listOf("maintain", "lose", "gain")))
+                            put("description", "Objetivo físico principal: 'maintain' (mantener), 'lose' (perder peso / definir), 'gain' (ganar masa muscular).")
+                        })
+                        put("water_goal_ml", JSONObject().apply {
+                            put("type", "integer")
+                            put("description", "Meta diaria de ingesta de agua en mililitros (ej: 2500).")
+                        })
+                    })
+                })
+            }
+        )
+
+        // 8. get_weight_history
         tools.put(
             JSONObject().apply {
                 put("name", "get_weight_history")
                 put(
                     "description",
-                    "Obtiene el historial de mediciones de peso del usuario, el peso actual y la meta establecida."
+                    "Obtiene el historial de pesajes del usuario, el peso actual, peso meta e índice de masa corporal (IMC/BMI)."
                 )
                 put("inputSchema", JSONObject().apply {
                     put("type", "object")
@@ -164,13 +299,13 @@ object McpToolRegistry {
             }
         )
 
-        // 6. log_weight (ESCRITURA)
+        // 9. log_weight (ESCRITURA)
         tools.put(
             JSONObject().apply {
                 put("name", "log_weight")
                 put(
                     "description",
-                    "Registra una nueva medición de peso corporal para el usuario y actualiza los cálculos de BMR/TDEE."
+                    "Registra un nuevo peso corporal en kilogramos y actualiza automáticamente los cálculos de BMR y TDEE."
                 )
                 put("inputSchema", JSONObject().apply {
                     put("type", "object")
@@ -189,7 +324,27 @@ object McpToolRegistry {
             }
         )
 
-        // 7. log_water (ESCRITURA)
+        // 10. get_water_history
+        tools.put(
+            JSONObject().apply {
+                put("name", "get_water_history")
+                put(
+                    "description",
+                    "Obtiene el historial de consumo de agua de los últimos N días comparado con la meta diaria."
+                )
+                put("inputSchema", JSONObject().apply {
+                    put("type", "object")
+                    put("properties", JSONObject().apply {
+                        put("days", JSONObject().apply {
+                            put("type", "integer")
+                            put("description", "Cantidad de días hacia atrás a consultar (por defecto 7).")
+                        })
+                    })
+                })
+            }
+        )
+
+        // 11. log_water (ESCRITURA)
         tools.put(
             JSONObject().apply {
                 put("name", "log_water")
@@ -210,22 +365,7 @@ object McpToolRegistry {
             }
         )
 
-        // 8. get_user_profile
-        tools.put(
-            JSONObject().apply {
-                put("name", "get_user_profile")
-                put(
-                    "description",
-                    "Obtiene los datos del perfil del usuario: edad, género, peso, altura, objetivo calórico diario, distribución de macros, BMR y TDEE."
-                )
-                put("inputSchema", JSONObject().apply {
-                    put("type", "object")
-                    put("properties", JSONObject())
-                })
-            }
-        )
-
-        // 9. control_fasting (LECTURA / ESCRITURA)
+        // 12. control_fasting
         tools.put(
             JSONObject().apply {
                 put("name", "control_fasting")
@@ -251,6 +391,64 @@ object McpToolRegistry {
             }
         )
 
+        // 13. get_workout_history
+        tools.put(
+            JSONObject().apply {
+                put("name", "get_workout_history")
+                put(
+                    "description",
+                    "Obtiene el historial de entrenamientos y ejercicio físico del usuario, con ejercicios realizados, series, repeticiones y calorías quemadas."
+                )
+                put("inputSchema", JSONObject().apply {
+                    put("type", "object")
+                    put("properties", JSONObject().apply {
+                        put("limit", JSONObject().apply {
+                            put("type", "integer")
+                            put("description", "Cantidad máxima de sesiones a devolver (por defecto 15).")
+                        })
+                        put("date", JSONObject().apply {
+                            put("type", "string")
+                            put("description", "Fecha específica en formato YYYY-MM-DD para ver el plan o entrenamiento de ese día.")
+                        })
+                    })
+                })
+            }
+        )
+
+        // 14. log_workout_session (ESCRITURA DE EJERCICIO)
+        tools.put(
+            JSONObject().apply {
+                put("name", "log_workout_session")
+                put(
+                    "description",
+                    "Registra una sesión de ejercicio o entrenamiento en Fud AI indicando calorías quemadas y detalles del entrenamiento."
+                )
+                put("inputSchema", JSONObject().apply {
+                    put("type", "object")
+                    put("required", JSONArray(listOf("calories_burned")))
+                    put("properties", JSONObject().apply {
+                        put("calories_burned", JSONObject().apply {
+                            put("type", "integer")
+                            put("description", "Calorías quemadas estimadas durante la sesión (kcal).")
+                        })
+                        put("name", JSONObject().apply {
+                            put("type", "string")
+                            put("description", "Nombre o descripción de la sesión (ej: 'Entrenamiento de Pecho y Tríceps', 'Correr 5km').")
+                        })
+                        put("duration_minutes", JSONObject().apply {
+                            put("type", "integer")
+                            put("description", "Duración de la sesión en minutos (ej: 45).")
+                        })
+                        put("date", JSONObject().apply {
+                            put("type", "string")
+                            put("description", "Fecha del entrenamiento en formato YYYY-MM-DD (por defecto hoy).")
+                        })
+                    })
+                })
+            }
+        )
+
         return tools
     }
 }
+

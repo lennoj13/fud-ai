@@ -71,10 +71,25 @@ fun McpServerSettingsCard(
     val publicTunnelUrl by McpForegroundService.publicTunnelUrl.collectAsState()
     val tunnelStatus by McpForegroundService.tunnelStatus.collectAsState()
     var showConfigDialog by remember { mutableStateOf(false) }
+    var showGptGuideDialog by remember { mutableStateOf(false) }
+
+    val chatGptSystemPrompt = """
+    Eres mi Asistente Nutricional y Deportivo Personal de Fud AI, conectado en tiempo real a mi diario en mi teléfono móvil.
+    
+    Tus funciones principales:
+    1. FOTOS DE COMIDA: Cuando te envíe una foto o imagen de comida o plato, analiza visualmente los alimentos presentes, estima el tamaño de las porciones en gramos, calcula las calorías totales y los macronutrientes (proteína, carbohidratos, grasas), desglosa los ingredientes en la lista 'ingredients' y llama de inmediato a la acción logFoodEntry. Si la imagen está disponible, incluye su Base64 en image_base64 para que aparezca la foto en mi diario.
+    2. CONSULTAR REGISTROS: Cuando te pregunte cómo voy hoy o en una fecha específica, llama a getTodaySummary o getFoodEntries. Indícame calorías consumidas, calorías quemadas por ejercicio, calorías restantes y desglose de macros vs mis metas.
+    3. GESTIONAR METAS: Si te pido cambiar mis objetivos (ej: subir a 2200 kcal, ajustar proteína a 160g, o cambiar mi peso meta), llama a updateUserGoals.
+    4. MODIFICAR COMIDAS: Si te digo que una comida tenía menos o más cantidad, o me equivoqué en el plato, llama a updateFoodEntry con el ID correspondiente.
+    5. REGISTRAR AGUA, PESO Y ENTRENAMIENTOS:
+       - Si te digo que tomé agua (ej: un vaso o una botella), llama a logWater.
+       - Si te digo cuánto pesé, llama a logWeight.
+       - Si te digo que hice ejercicio o entrené, calcula o usa las calorías quemadas y llama a logWorkoutSession.
+    """.trimIndent()
 
     Column {
         Text(
-            text = "INTEGRACIÓN CON CHATGPT / AGENTES IA (MCP)",
+            text = "INTEGRACIÓN CON CHATGPT / AGENTES IA (MCP & OPENAPI)",
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f),
@@ -123,7 +138,7 @@ fun McpServerSettingsCard(
                         Text(
                             text = if (ui.mcpServerEnabled) {
                                 if (publicTunnelUrl != null) "En línea en Internet con Túnel Público" else "Iniciando conexión..."
-                            } else "Permite a ChatGPT leer y registrar tus comidas",
+                            } else "Permite a ChatGPT leer, registrar y gestionar todo",
                             style = MaterialTheme.typography.bodySmall,
                             color = if (ui.mcpServerEnabled) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
@@ -150,16 +165,15 @@ fun McpServerSettingsCard(
 
                         // PROMINENT PUBLIC TUNNEL SECTION FOR CHATGPT
                         if (publicTunnelUrl != null) {
+                            val openApiUrl = "$publicTunnelUrl/openapi.json"
                             val fullMcpUrl = "$publicTunnelUrl/mcp"
+
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(Color(0xFF065F46).copy(alpha = 0.25f))
                                     .border(1.5.dp, Color(0xFF10B981).copy(alpha = 0.6f), RoundedCornerShape(14.dp))
-                                    .clickable {
-                                        copyToClipboard(context, fullMcpUrl, "¡URL para ChatGPT copiada al portapapeles!")
-                                    }
                                     .padding(14.dp)
                             ) {
                                 Column {
@@ -167,33 +181,77 @@ fun McpServerSettingsCard(
                                         Icon(Icons.Outlined.CloudDone, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(20.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text(
-                                            "URL PÚBLICA PARA CHATGPT (INTERNET)",
+                                            "ENLACE PÚBLICO SEGURO ACTIVO",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color(0xFF10B981)
                                         )
-                                        Spacer(Modifier.weight(1f))
-                                        Icon(Icons.Outlined.ContentCopy, contentDescription = "Copiar", tint = Color(0xFF10B981), modifier = Modifier.size(16.dp))
                                     }
 
-                                    Spacer(Modifier.height(6.dp))
+                                    Spacer(Modifier.height(8.dp))
 
-                                    Text(
-                                        text = fullMcpUrl,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 13.sp,
-                                        color = Color.White
-                                    )
+                                    // Action 1: OpenAPI for Custom GPT Actions
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(Color(0xFF10B981).copy(alpha = 0.15f))
+                                            .border(1.dp, Color(0xFF10B981).copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                            .clickable {
+                                                copyToClipboard(context, openApiUrl, "¡URL OpenAPI para ChatGPT copiada!")
+                                            }
+                                            .padding(10.dp)
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text("URL PARA ACTIONS EN CHATGPT (Recomendado):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
+                                                Text(openApiUrl, fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = Color.White)
+                                            }
+                                            Icon(Icons.Outlined.ContentCopy, contentDescription = "Copiar", tint = Color(0xFF10B981), modifier = Modifier.size(16.dp))
+                                        }
+                                    }
 
-                                    Spacer(Modifier.height(6.dp))
+                                    Spacer(Modifier.height(8.dp))
 
-                                    Text(
-                                        text = "Toca para copiar. Pega esta dirección en ChatGPT (Developer Mode o Custom GPT Actions) y pregúntale por tus comidas desde cualquier lugar con 4G, 5G o Wi-Fi.",
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                                        lineHeight = 15.sp
-                                    )
+                                    // Action 2: MCP Endpoint
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                            .clickable {
+                                                copyToClipboard(context, fullMcpUrl, "¡URL MCP copiada!")
+                                            }
+                                            .padding(10.dp)
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text("URL MCP PARA CLAUDE / AGENTES:", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                                Text(fullMcpUrl, fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f))
+                                            }
+                                            Icon(Icons.Outlined.ContentCopy, contentDescription = "Copiar", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+
+                                    Spacer(Modifier.height(10.dp))
+
+                                    // Button: Configurar Custom GPT
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(Color(0xFF10B981))
+                                            .clickable { showGptGuideDialog = true }
+                                            .padding(vertical = 10.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            "Ver Guía Paso a Paso para ChatGPT",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp,
+                                            color = Color.Black
+                                        )
+                                    }
                                 }
                             }
                             Spacer(Modifier.height(10.dp))
@@ -216,7 +274,7 @@ fun McpServerSettingsCard(
                         // Local Wi-Fi IP Pill
                         DetailInfoPill(
                             icon = Icons.Outlined.Lan,
-                            label = "URL Local Wi-Fi (para misma red):",
+                            label = "URL Local Wi-Fi (misma red):",
                             value = "http://$localIp:${ui.mcpServerPort}",
                             onCopy = {
                                 copyToClipboard(context, "http://$localIp:${ui.mcpServerPort}", "URL local copiada")
@@ -224,18 +282,6 @@ fun McpServerSettingsCard(
                         )
 
                         Spacer(Modifier.height(8.dp))
-
-                        // USB Forward Pill
-                        DetailInfoPill(
-                            icon = Icons.Outlined.Usb,
-                            label = "Conexión USB a PC (Opcional):",
-                            value = "adb forward tcp:${ui.mcpServerPort} tcp:${ui.mcpServerPort}",
-                            onCopy = {
-                                copyToClipboard(context, "adb forward tcp:${ui.mcpServerPort} tcp:${ui.mcpServerPort}", "Comando ADB copiado")
-                            }
-                        )
-
-                        Spacer(Modifier.height(10.dp))
 
                         // Action Buttons
                         Row(
@@ -259,7 +305,7 @@ fun McpServerSettingsCard(
                                           }
                                         }
                                         """.trimIndent()
-                                        copyToClipboard(context, mcpConfig, "Configuración Claude/MCP copiada al portapapeles")
+                                        copyToClipboard(context, mcpConfig, "Configuración Claude Desktop copiada")
                                     }
                                     .padding(vertical = 10.dp, horizontal = 12.dp),
                                 contentAlignment = Alignment.Center
@@ -267,7 +313,7 @@ fun McpServerSettingsCard(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                                     Spacer(Modifier.width(6.dp))
-                                    Text("Copiar Config MCP", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
+                                    Text("Claude Config", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
                                 }
                             }
 
@@ -290,6 +336,74 @@ fun McpServerSettingsCard(
                         Spacer(Modifier.height(8.dp))
                     }
                 }
+            }
+        }
+
+        if (showGptGuideDialog) {
+            val openApiUrl = "${publicTunnelUrl ?: "http://$localIp:${ui.mcpServerPort}"}/openapi.json"
+
+            FudGlassDialog(onDismissRequest = { showGptGuideDialog = false }) {
+                Text(
+                    text = "Cómo usar Fud AI con ChatGPT",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = "Configura tu Custom GPT en 3 minutos para poder mandarle fotos de comida y que registre todo automáticamente:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f)
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Text("Paso 1: Abrir GPT Builder", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
+                Text("En ChatGPT (web o app), ve a 'Explorar GPTs' y presiona '+ Crear'.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+
+                Spacer(Modifier.height(6.dp))
+
+                Text("Paso 2: Importar Acciones (OpenAPI)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
+                Text("En la pestaña 'Configurar', ve al final a 'Acciones' -> 'Importar desde URL' y pega:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .clickable { copyToClipboard(context, openApiUrl, "URL de OpenAPI copiada") }
+                        .padding(8.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(openApiUrl, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f))
+                        Icon(Icons.Outlined.ContentCopy, contentDescription = "Copiar", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                Text("Paso 3: Pegar Instrucciones del Asistente", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
+                Text("En el campo 'Instrucciones' de tu GPT, pega el siguiente prompt optimizado:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF10B981).copy(alpha = 0.15f))
+                        .clickable { copyToClipboard(context, chatGptSystemPrompt, "¡Instrucciones de ChatGPT copiadas!") }
+                        .padding(10.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Copiar Instrucciones del Asistente", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981), modifier = Modifier.weight(1f))
+                        Icon(Icons.Outlined.ContentCopy, contentDescription = "Copiar", tint = Color(0xFF10B981), modifier = Modifier.size(18.dp))
+                    }
+                }
+
+                FudGlassDialogActions(
+                    primaryText = "Entendido",
+                    onPrimary = { showGptGuideDialog = false },
+                    dismissText = "Cerrar",
+                    onDismiss = { showGptGuideDialog = false }
+                )
             }
         }
 

@@ -164,20 +164,33 @@ class McpHttpServer(
                         handleMcpRpcMessage(outputStream, body, sessionId)
                     }
 
-                    // 3. Status and greeting
+                    // 3. OpenAPI 3.0 Specification for ChatGPT Actions
+                    method == "GET" && (path == "/openapi.json" || path == "/openapi.yaml") -> {
+                        val hostHeader = headers["host"] ?: "localhost:$port"
+                        val scheme = if (headers["x-forwarded-proto"] == "https" || hostHeader.contains("serveo.net") || hostHeader.contains("serveousercontent.com")) "https" else "http"
+                        val baseUrl = "$scheme://$hostHeader"
+                        val openApiJson = McpOpenApiSpec.generateJson(baseUrl)
+                        sendJsonResponse(outputStream, 200, openApiJson)
+                    }
+
+                    // 4. Status and greeting
                     method == "GET" && (path == "/" || path == "/status" || path == "/api/status") -> {
+                        val hostHeader = headers["host"] ?: "localhost:$port"
+                        val scheme = if (headers["x-forwarded-proto"] == "https" || hostHeader.contains("serveo.net") || hostHeader.contains("serveousercontent.com")) "https" else "http"
+                        val baseUrl = "$scheme://$hostHeader"
                         sendJsonResponse(outputStream, 200, JSONObject().apply {
                             put("app", "Fud AI")
                             put("mcp_server", "active")
                             put("version", "1.0.0")
                             put("tools_count", McpToolRegistry.getToolsListJson().length())
-                            put("sse_endpoint", "/mcp/sse")
-                            put("message_endpoint", "/mcp/message")
-                            put("direct_mcp_endpoint", "/mcp")
+                            put("openapi_spec", "$baseUrl/openapi.json")
+                            put("sse_endpoint", "$baseUrl/mcp/sse")
+                            put("message_endpoint", "$baseUrl/mcp/message")
+                            put("direct_mcp_endpoint", "$baseUrl/mcp")
                         })
                     }
 
-                    // 4. REST shortcut: Today's summary
+                    // 5. REST: Today's summary
                     method == "GET" && path == "/api/summary" -> {
                         val result = toolExecutor.executeTool("get_today_summary", JSONObject().apply {
                             queryParams["date"]?.let { put("date", it) }
@@ -185,7 +198,7 @@ class McpHttpServer(
                         sendJsonResponse(outputStream, 200, result.optJSONObject("structuredData") ?: result)
                     }
 
-                    // 5. REST shortcut: Food entries
+                    // 6. REST: Food entries (query & filter)
                     method == "GET" && path == "/api/meals" -> {
                         val args = JSONObject().apply {
                             queryParams["from"]?.let { put("from", it) }
@@ -198,7 +211,7 @@ class McpHttpServer(
                         sendJsonResponse(outputStream, 200, result.optJSONObject("structuredData") ?: result)
                     }
 
-                    // 6. REST shortcut: Log meal
+                    // 7. REST: Log meal (with photos, ingredients & macros)
                     method == "POST" && path == "/api/meals" -> {
                         val json = runCatching { JSONObject(body) }.getOrElse { JSONObject() }
                         val result = toolExecutor.executeTool("log_food_entry", json)
@@ -206,7 +219,42 @@ class McpHttpServer(
                         sendJsonResponse(outputStream, status, result.optJSONObject("structuredData") ?: result)
                     }
 
-                    // 7. REST shortcut: Log weight
+                    // 8. REST: Update meal
+                    (method == "PUT" || method == "PATCH") && path == "/api/meals" -> {
+                        val json = runCatching { JSONObject(body) }.getOrElse { JSONObject() }
+                        val result = toolExecutor.executeTool("update_food_entry", json)
+                        val status = if (result.optBoolean("isError", false)) 400 else 200
+                        sendJsonResponse(outputStream, status, result.optJSONObject("structuredData") ?: result)
+                    }
+
+                    // 9. REST: Delete meal
+                    method == "DELETE" && path == "/api/meals" -> {
+                        val id = queryParams["id"] ?: runCatching { JSONObject(body).optString("id") }.getOrNull() ?: ""
+                        val result = toolExecutor.executeTool("delete_food_entry", JSONObject().put("id", id))
+                        val status = if (result.optBoolean("isError", false)) 400 else 200
+                        sendJsonResponse(outputStream, status, result.optJSONObject("structuredData") ?: result)
+                    }
+
+                    // 10. REST: Get user profile & goals
+                    method == "GET" && path == "/api/profile" -> {
+                        val result = toolExecutor.executeTool("get_user_profile", JSONObject())
+                        sendJsonResponse(outputStream, 200, result.optJSONObject("structuredData") ?: result)
+                    }
+
+                    // 11. REST: Update user goals
+                    method == "POST" && (path == "/api/goals" || path == "/api/profile/goals") -> {
+                        val json = runCatching { JSONObject(body) }.getOrElse { JSONObject() }
+                        val result = toolExecutor.executeTool("update_user_goals", json)
+                        val status = if (result.optBoolean("isError", false)) 400 else 200
+                        sendJsonResponse(outputStream, status, result.optJSONObject("structuredData") ?: result)
+                    }
+
+                    // 12. REST: Weight history & log weight
+                    method == "GET" && path == "/api/weight" -> {
+                        val limit = queryParams["limit"]?.toIntOrNull() ?: 30
+                        val result = toolExecutor.executeTool("get_weight_history", JSONObject().put("limit", limit))
+                        sendJsonResponse(outputStream, 200, result.optJSONObject("structuredData") ?: result)
+                    }
                     method == "POST" && path == "/api/weight" -> {
                         val json = runCatching { JSONObject(body) }.getOrElse { JSONObject() }
                         val result = toolExecutor.executeTool("log_weight", json)
@@ -214,11 +262,40 @@ class McpHttpServer(
                         sendJsonResponse(outputStream, status, result.optJSONObject("structuredData") ?: result)
                     }
 
-                    // 8. REST shortcut: Log water
+                    // 13. REST: Water history & log water
+                    method == "GET" && path == "/api/water" -> {
+                        val days = queryParams["days"]?.toIntOrNull() ?: 7
+                        val result = toolExecutor.executeTool("get_water_history", JSONObject().put("days", days))
+                        sendJsonResponse(outputStream, 200, result.optJSONObject("structuredData") ?: result)
+                    }
                     method == "POST" && path == "/api/water" -> {
                         val json = runCatching { JSONObject(body) }.getOrElse { JSONObject() }
                         val result = toolExecutor.executeTool("log_water", json)
                         val status = if (result.optBoolean("isError", false)) 400 else 201
+                        sendJsonResponse(outputStream, status, result.optJSONObject("structuredData") ?: result)
+                    }
+
+                    // 14. REST: Workouts
+                    method == "GET" && path == "/api/workouts" -> {
+                        val args = JSONObject().apply {
+                            queryParams["limit"]?.toIntOrNull()?.let { put("limit", it) }
+                            queryParams["date"]?.let { put("date", it) }
+                        }
+                        val result = toolExecutor.executeTool("get_workout_history", args)
+                        sendJsonResponse(outputStream, 200, result.optJSONObject("structuredData") ?: result)
+                    }
+                    method == "POST" && path == "/api/workouts" -> {
+                        val json = runCatching { JSONObject(body) }.getOrElse { JSONObject() }
+                        val result = toolExecutor.executeTool("log_workout_session", json)
+                        val status = if (result.optBoolean("isError", false)) 400 else 201
+                        sendJsonResponse(outputStream, status, result.optJSONObject("structuredData") ?: result)
+                    }
+
+                    // 15. REST: Fasting
+                    method == "POST" && path == "/api/fasting" -> {
+                        val json = runCatching { JSONObject(body) }.getOrElse { JSONObject() }
+                        val result = toolExecutor.executeTool("control_fasting", json)
+                        val status = if (result.optBoolean("isError", false)) 400 else 200
                         sendJsonResponse(outputStream, status, result.optJSONObject("structuredData") ?: result)
                     }
 

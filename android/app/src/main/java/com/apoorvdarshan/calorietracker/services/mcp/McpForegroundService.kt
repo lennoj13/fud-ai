@@ -85,6 +85,8 @@ class McpForegroundService : Service() {
                     waterRepository = container.waterRepository,
                     fastingRepository = container.fastingRepository,
                     profileRepository = container.profileRepository,
+                    workoutRepository = container.workoutRepository,
+                    imageStore = container.imageStore,
                     prefs = container.prefs
                 )
 
